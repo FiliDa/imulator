@@ -1,0 +1,18 @@
+[Unit]
+Description=Cheater Buster API (Docker Compose)
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+WorkingDirectory=/opt/cheater-buster
+Environment=APP_DIR=/opt/cheater-buster
+ExecStartPre=/bin/bash -c '/opt/cheater-buster/scripts/ensure-docker.sh'
+ExecStartPre=/bin/bash -c '/opt/cheater-buster/scripts/ensure-env.sh'
+ExecStart=/usr/bin/docker compose up -d --build
+ExecStop=/usr/bin/docker compose down
+User=root
+
+[Install]
+WantedBy=multi-user.target

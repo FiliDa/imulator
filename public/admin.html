@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cheater Buster Admin</title>
+    <style>
+      :root {
+        --bg: #0f1216; --panel: #151a21; --text: #e6edf3; --muted: #9aa7b0;
+        --accent: #3b82f6; --accent-2: #22c55e; --danger: #ef4444; --border: #1f2937;
+        --hover: rgba(59,130,246,0.12);
+      }
+      * { box-sizing: border-box; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+      header { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; gap: 16px; align-items: center; position: sticky; top: 0; background: var(--bg); z-index: 100; }
+      header h1 { font-size: 18px; margin: 0; }
+      header a { color: var(--accent); text-decoration: none; }
+      main { padding: 0; }
+      .layout { display: flex; min-height: calc(100vh - 70px); }
+      .sidebar { width: 240px; border-right: 1px solid var(--border); padding: 16px; position: sticky; top: 70px; height: calc(100vh - 70px); overflow-y: auto; }
+      .content { flex: 1; padding: 20px; }
+      .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+      .panel { display: none; }
+      .panel.active { display: block; }
+      .nav { display: flex; flex-direction: column; gap: 6px; }
+      .nav-btn { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; }
+      .nav-btn:hover { background: var(--hover); }
+      .nav-btn.active { border-color: var(--accent); background: rgba(59,130,246,0.18); }
+      .muted { color: var(--muted); font-size: 12px; }
+      .row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+      label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+      input, select, textarea, button { font-size: 14px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text); }
+      textarea { width: 100%; min-height: 160px; }
+      button { background: var(--panel); cursor: pointer; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      button.success { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+      button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+      pre { background: var(--panel); border: 1px solid var(--border); padding: 12px; border-radius: 8px; overflow: auto; max-height: 400px; }
+      .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .kv div { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+      /* Segmented tabs */
+      .seg { display: inline-flex; gap: 8px; margin-bottom: 12px; position: relative; z-index: 10; }
+      .seg button { padding: 8px 12px; border-radius: 8px; background: var(--panel); border: 1px solid var(--border); color: var(--muted); cursor: pointer; }
+      .seg button.active { color: var(--text); border-color: var(--accent); }
+      .panels { }
+      /* Toasts */
+      .toastContainer { position: fixed; bottom: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
+      .toast { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); transition: all .3s ease; }
+      .toast.success { border-color: var(--accent-2); }
+      .toast.error { border-color: var(--danger); }
+      @media (max-width: 900px) {
+        .layout { flex-direction: column; }
+        .sidebar { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid var(--border); }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Cheater Buster — Админ-панель</h1>
+      <a href="/docs" target="_blank">Swagger</a>
+      <span class="muted" id="health">Проверка здоровья…</span>
+      <div class="row" style="margin-left:auto">
+        <input id="token" type="password" placeholder="Admin token" />
+        <button id="saveToken">Сохранить</button>
+        <span class="muted" id="roleBadge" style="margin-left:8px">роль: —</span>
+        <button id="toggleTheme">Тема</button>
+      </div>
+    </header>
+    <main>
+      <div class="layout">
+        <aside class="sidebar">
+          <div class="nav" id="sidebarNav">
+            <button type="button" class="nav-btn active" data-target="panel-overview">🏠 Обзор</button>
+            <button type="button" class="nav-btn" data-target="panel-config">⚙️ Конфиг</button>
+            <button type="button" class="nav-btn" data-target="panel-prompt">🧠 Промт</button>
+            <button type="button" class="nav-btn" data-target="panel-tests">🧪 Тесты</button>
+            <button type="button" class="nav-btn" data-target="panel-logs">📜 Логи</button>
+            <button type="button" class="nav-btn" data-target="panel-audit">🔍 Аудит</button>
+            <button type="button" class="nav-btn" data-target="panel-stats">📊 Статистика</button>
+            <div class="muted" style="margin-top:8px">Токен: хранится локально</div>
+          </div>
+        </aside>
+        <section class="content">
+          <div class="panel active" id="panel-overview">
+            <section class="card">
+              <h3>Статус</h3>
+              <div class="kv" id="statusKv">
+                <div><b>Configured</b><div id="stCfg">—</div></div>
+                <div><b>Model</b><div id="stModel">—</div></div>
+                <div><b>Uptime</b><div id="stUptime">—</div></div>
+                <div><b>Users</b><div id="stUsers">—</div></div>
+              </div>
+              <div class="row"><button id="reloadMeta">Обновить</button> <a href="/docs" target="_blank">Docs →</a></div>
+            </section>
+          </div>
+
+          <div class="panel" id="panel-config">
+            <section class="card">
+              <h3>Конфиг (runtime)</h3>
+              <div class="grid-2">
+                <div>
+                  <label>OPENAI_API_KEY</label>
+                  <input id="cfgKey" type="password" placeholder="оставьте пустым для мок‑режима" />
+                </div>
+                <div>
+                  <label>LLM_MODEL</label>
+                  <input id="cfgModel" placeholder="напр. gpt‑4o‑mini" />
+                </div>
+                <div>
+                  <label>CORS_ORIGIN</label>
+                  <input id="cfgCors" placeholder="* или https://example.com" />
+                </div>
+                <div>
+                  <label>ADMIN_TOKEN</label>
+                  <input id="cfgAdmin" type="password" placeholder="новый токен админа" />
+                </div>
+                <div>
+                  <label>OPERATOR_TOKEN</label>
+                  <input id="cfgOperator" type="password" placeholder="токен оператора (чтение)" />
+                </div>
+              </div>
+              <div class="row">
+                <button id="cfgApply" class="primary">Применить</button>
+              </div>
+              <div class="muted">После смены админ‑токена — используйте новый в верхнем поле.</div>
+            </section>
+          </div>
+
+          <div class="panel" id="panel-prompt">
+            <section class="card">
+              <h3>Промт (система)</h3>
+              <div class="row">
+                <button id="promptLoad">Загрузить</button>
+                <button id="promptApply" class="primary">Применить (без сохранения)</button>
+                <button id="promptSave" class="success">Сохранить на диск</button>
+                <button id="promptReset" class="danger">Сбросить к дефолту</button>
+                <button id="promptReload">Перечитать с диска</button>
+                <button id="promptExport">Экспорт .txt</button>
+                <input id="promptImportFile" type="file" accept="text/plain" style="display:none" />
+                <button id="promptImport">Импорт .txt</button>
+              </div>
+              <label>Текущий промт</label>
+              <textarea id="promptText" placeholder="Текст системного промта"></textarea>
+              <div class="muted">Все анализ-эндпоинты используют этот промт.</div>
+            </section>
+          </div>
+
+          <div class="panel" id="panel-tests">
+            <section class="card">
+              <h3>Тесты</h3>
+              <div class="seg" id="testsSeg">
+                <button type="button" class="seg-btn active" data-tab="panel-text">Text</button>
+                <button type="button" class="seg-btn" data-tab="panel-text-image">Text + Image</button>
+                <button type="button" class="seg-btn" data-tab="panel-image">Image</button>
+              </div>
+              <div class="panels">
+                <div class="panel active" id="panel-text">
+                  <label>Текст</label>
+                  <textarea id="testText" placeholder="Введите текст"></textarea>
+                  <div class="grid-2">
+                    <div>
+                      <label>Контекст (опционально)</label>
+                      <input id="testContextT" placeholder="Контекст" />
+                    </div>
+                    <div class="row" style="align-items:center">
+                      <input id="plainText" type="checkbox" class="plain" />
+                      <label class="muted" for="plainText">Ответ: text/plain</label>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <button id="sendText" class="primary">Отправить</button>
+                  </div>
+                  <pre id="testTextOut">—</pre>
+                </div>
+
+                <div class="panel" id="panel-text-image">
+                  <label>Описание</label>
+                  <textarea id="testTIText" placeholder="Описание"></textarea>
+                  <div class="grid-2">
+                    <div>
+                      <label>Контекст (опционально)</label>
+                      <input id="testContextTI" placeholder="Контекст" />
+                    </div>
+                    <div class="row" style="align-items:center">
+                      <input id="plainTI" type="checkbox" class="plain" />
+                      <label class="muted" for="plainTI">Ответ: text/plain</label>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <input id="testTIImages" type="file" multiple accept="image/*" />
+                    <button id="sendTextImage" class="primary">Отправить</button>
+                  </div>
+                  <pre id="testTIOut">—</pre>
+                </div>
+
+                <div class="panel" id="panel-image">
+                  <div class="grid-2">
+                    <div>
+                      <label>Контекст (опционально)</label>
+                      <input id="testContextI" placeholder="Контекст" />
+                    </div>
+                    <div class="row" style="align-items:center">
+                      <input id="plainI" type="checkbox" class="plain" />
+                      <label class="muted" for="plainI">Ответ: text/plain</label>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <input id="testIImages" type="file" multiple accept="image/*" />
+                    <button id="sendImage" class="primary">Отправить</button>
+                  </div>
+                  <pre id="testIOut">—</pre>
+                </div>
+
+              </div>
+            </section>
+          </div>
+
+          <div class="panel" id="panel-logs">
+            <section class="card">
+              <h3>Логи</h3>
+              <div class="row">
+                <select id="logsRoute">
+                  <option value="">Все маршруты</option>
+                  <option value="text">text</option>
+                  <option value="text-image">text-image</option>
+                  <option value="image">image</option>
+                </select>
+                <input id="logsLimit" type="number" min="1" max="1000" value="200" />
+                <input id="logsSince" type="text" placeholder="ISO-время (опционально)" style="flex:1" />
+                <input id="logsQuery" type="text" placeholder="поиск (q)" style="flex:1" />
+                <button id="logsReload" class="primary">Обновить</button>
+                <button id="logsClear" class="danger">Очистить</button>
+                <button id="logsExportJson">Экспорт JSON</button>
+                <button id="logsExportCsv">Экспорт CSV</button>
+              </div>
+              <pre id="logsOut">—</pre>
+            </section>
+          </div>
+
+          <div class="panel" id="panel-audit">
+            <section class="card">
+              <h3>Аудит</h3>
+              <div class="row">
+                <input id="auditLimit" type="number" min="1" max="1000" value="100" />
+                <button id="auditReload" class="primary">Загрузить</button>
+              </div>
+              <pre id="auditOut">—</pre>
+            </section>
+          </div>
+
+          <div class="panel" id="panel-stats">
+            <section class="card">
+              <h3>Статистика по дням</h3>
+              <div class="row">
+                <input id="dailyDays" type="number" min="1" max="30" value="7" />
+                <button id="dailyReload" class="primary">Загрузить</button>
+              </div>
+              <pre id="dailyOut">—</pre>
+            </section>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script src="/admin.js" defer></script>
+  <div id="toast" class="toastContainer"></div>
+  </body>
+  </html>

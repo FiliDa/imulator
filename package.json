@@ -1,0 +1,23 @@
+{
+  "name": "cheater-buster-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Небольшое API для Cheater Buster: текст/фото → текст, Swagger, админ-панель",
+  "scripts": {
+    "start": "node src/server.js",
+    "test10": "node scripts/run-test10-internal.js",
+    "test10:external": "node scripts/run-test10-external.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^7.2.0",
+    "multer": "^1.4.5-lts.1",
+    "openai": "^4.57.0",
+    "swagger-ui-express": "^5.0.0",
+    "zod": "^3.23.8"
+  }
+}

@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+
+# External user verification (Ubuntu/Debian)
+# - Simulates external client calling: text, text+image, image (English)
+# - Uses images from tests/skrin_test
+# - Outputs to 5test/ (cases.json, summary.json)
+# Requires: bash, curl, node >= 18
+
+set -euo pipefail
+
+BASE_URL="${BASE_URL:-http://localhost:9999}"
+IMG_DIR="tests/skrin_test"
+RUN_5TEST="scripts/run-5tests-external-en.js"
+
+usage() {
+  cat <<EOF
+Usage: ./external-verify.sh [options]
+
+Options:
+  --base <url>   Set BASE_URL (default: ${BASE_URL})
+  --help         Show this help
+
+Environment:
+  BASE_URL       API base, e.g. http://<ip>:9999
+
+This script:
+  1) Checks health at BASE_URL/health
+  2) Verifies screenshots exist under ${IMG_DIR}
+  3) Runs English external tests (5 per route)
+  4) Prints 5test/summary.json
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --base)
+      [[ $# -ge 2 ]] || { echo "Missing value for --base"; exit 2; }
+      BASE_URL="$2"; shift 2;
+      ;;
+    --help|-h)
+      usage; exit 0;
+      ;;
+    *)
+      echo "Unknown option: $1"; usage; exit 2;
+      ;;
+  esac
+done
+
+echo "[1/4] Checking prerequisites (curl, node)"
+command -v curl >/dev/null 2>&1 || { echo "Error: curl not found"; exit 1; }
+command -v node >/dev/null 2>&1 || { echo "Error: node not found"; exit 1; }
+
+NODE_VER=$(node -v | sed 's/^v//')
+MAJOR=${NODE_VER%%.*}
+if [[ ${MAJOR} -lt 18 ]]; then
+  echo "Error: Node ${NODE_VER} detected; please use Node 18+"
+  exit 1
+fi
+
+echo "[2/4] Health check: ${BASE_URL}/health"
+if ! curl -sf "${BASE_URL}/health" >/dev/null; then
+  echo "Error: server not healthy or unreachable at ${BASE_URL}"
+  echo "Hint: start the server (e.g., ./mainstart.sh) and re-run"
+  exit 1
+fi
+echo "OK: server is healthy"
+
+echo "[3/4] Checking screenshots in ${IMG_DIR}"
+if [[ ! -d "${IMG_DIR}" ]]; then
+  echo "Error: directory ${IMG_DIR} not found"
+  exit 1
+fi
+shopt -s nullglob
+IMGS=("${IMG_DIR}"/*.png "${IMG_DIR}"/*.jpg "${IMG_DIR}"/*.jpeg)
+if [[ ${#IMGS[@]} -eq 0 ]]; then
+  echo "Error: no images (*.png|*.jpg|*.jpeg) in ${IMG_DIR}"
+  exit 1
+fi
+echo "Found ${#IMGS[@]} images"
+shopt -u nullglob
+
+echo "[4/4] Running English external tests (text / text+image / image)"
+TEST_BASE_URL="${BASE_URL}" node "${RUN_5TEST}" || {
+  echo "run-5tests-external-en failed"; exit 1;
+}
+
+if [[ -f "5test/summary.json" ]]; then
+  echo "\n5test summary:"; cat "5test/summary.json"
+else
+  echo "Warning: 5test/summary.json not found"
+fi
+
+echo "Done. Artifacts saved under 5test/"

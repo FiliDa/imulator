@@ -1,0 +1,419 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Cheater Buster API",
+    "version": "1.1.0",
+    "description": "API: анализ текста/скриншотов. Ответы краткие, на английском, повелительное наклонение. Поддержка режимов text / text-image / image, параметр plain=text/plain, коды ошибок и админ‑эндпоинты."
+  },
+  "servers": [{ "url": "/" }],
+  "paths": {
+    "/api/v1/analyze/text": {
+      "post": {
+        "summary": "Текст → Короткий ответ",
+        "tags": ["Analyze"],
+        "description": "Принимает текст и опциональный контекст. Возвращает короткую инструкцию на английском (1–2 предложения, повелительное наклонение). При `plain=true` — `text/plain`.",
+        "parameters": [
+          { "in": "query", "name": "plain", "schema": { "type": "boolean" }, "required": false, "description": "Если true — ответ в формате text/plain (только короткая инструкция)" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string" },
+                  "context": { "type": "string" }
+                },
+                "required": ["text"]
+              },
+              "examples": {
+                "basic": {
+                  "summary": "Пример запроса",
+                  "value": { "text": "Партнёр скрывает телефон", "context": "Хочу обсудить доверие спокойно" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Result" }, "examples": { "json": { "summary": "Результат", "value": { "result": "Say you want to have an honest conversation about trust and privacy." } } } },
+              "text/plain": { "schema": { "type": "string", "description": "Только короткая инструкция на английском (1–2 предложения, повелительное наклонение)" }, "examples": { "plain": { "summary": "plain", "value": "Say you want to have an honest conversation about trust and privacy." } } }
+            }
+          },
+          "400": { "description": "Ошибка запроса" },
+          "503": { "description": "LLM не настроен" },
+          "500": { "description": "Ошибка LLM" }
+        }
+      }
+    },
+    "/api/v1/analyze/text-image": {
+      "post": {
+        "summary": "Текст+Фото → Короткий ответ",
+        "tags": ["Analyze"],
+        "description": "Принимает текст/контекст + изображения (multipart: binary; JSON: dataURL). Возвращает короткую инструкцию на английском. При `plain=true` — `text/plain`.",
+        "parameters": [
+          { "in": "query", "name": "plain", "schema": { "type": "boolean" }, "required": false, "description": "Если true — ответ в формате text/plain (только короткая инструкция)" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string" },
+                  "images": { "type": "array", "items": { "type": "string", "format": "binary" } },
+                  "context": { "type": "string" }
+                }
+              },
+              "examples": {
+                "multipart": {
+                  "summary": "Форма",
+                  "value": { "text": "Описание", "context": "Контекст", "images": ["(файлы)"] }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string" },
+                  "images": { "type": "array", "items": { "type": "string", "description": "dataURL изображения" } },
+                  "context": { "type": "string" }
+                }
+              },
+              "examples": {
+                "json": {
+                  "summary": "JSON",
+                  "value": { "text": "Описание", "context": "Контекст", "images": ["data:image/png;base64,iVBORw0…"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Result" } },
+              "text/plain": { "schema": { "type": "string", "description": "Только короткая инструкция на английском (1–2 предложения, повелительное наклонение)" }, "examples": { "plain": { "value": "Ask for verification and avoid sharing personal data." } } }
+            }
+          },
+          "400": { "description": "Ошибка запроса" },
+          "503": { "description": "LLM не настроен" },
+          "500": { "description": "Ошибка LLM" }
+        }
+      }
+    },
+    "/api/v1/analyze/image": {
+      "post": {
+        "summary": "Фото → Короткий ответ",
+        "tags": ["Analyze"],
+        "description": "Принимает изображения (multipart: binary; JSON: dataURL) и опциональный контекст. Возвращает короткую инструкцию на английском. При `plain=true` — `text/plain`.",
+        "parameters": [
+          { "in": "query", "name": "plain", "schema": { "type": "boolean" }, "required": false, "description": "Если true — ответ в формате text/plain (только короткая инструкция)" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "images": { "type": "array", "items": { "type": "string", "format": "binary" } },
+                  "context": { "type": "string" }
+                }
+              },
+              "examples": { "multipart": { "summary": "Только изображения", "value": { "images": ["(файлы)"] } } }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "images": { "type": "array", "items": { "type": "string", "description": "dataURL изображения" } },
+                  "context": { "type": "string" }
+                },
+                "required": ["images"]
+              },
+              "examples": { "json": { "summary": "JSON", "value": { "images": ["data:image/jpeg;base64,/9j/4AAQ…"], "context": "Проверь на явные признаки мошенничества." } } }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Result" } },
+              "text/plain": { "schema": { "type": "string", "description": "Только короткая инструкция на английском (1–2 предложения, повелительное наклонение)" }, "examples": { "plain": { "value": "Do not pay; report suspicious activity to platform support." } } }
+            }
+          },
+          "400": { "description": "Ошибка запроса" },
+          "503": { "description": "LLM не настроен" },
+          "500": { "description": "Ошибка LLM" }
+        }
+      }
+    },
+    "/api/v1/admin/logs": {
+      "get": {
+        "summary": "Получить последние логи (с фильтрами)",
+        "parameters": [
+          { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true },
+          { "in": "query", "name": "route", "schema": { "type": "string", "enum": ["text", "text-image", "image"] }, "required": false },
+          { "in": "query", "name": "limit", "schema": { "type": "integer", "minimum": 1, "maximum": 1000 }, "required": false },
+          { "in": "query", "name": "since", "schema": { "type": "string", "description": "ISO timestamp" }, "required": false },
+          { "in": "query", "name": "q", "schema": { "type": "string" }, "required": false, "description": "Поиск подстроки по output/error/input" }
+        ],
+        "responses": { "200": { "description": "Успех" }, "401": { "description": "Нет доступа" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/stats": {
+      "get": {
+        "summary": "Получить статистику",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true } ],
+        "responses": { "200": { "description": "Успех" }, "401": { "description": "Нет доступа" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/config": {
+      "get": {
+        "summary": "Публичный конфиг",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true } ],
+        "responses": { "200": { "description": "Успех" }, "401": { "description": "Нет доступа" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/config/update": {
+      "post": {
+        "summary": "Обновить runtime-конфиг и .env",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true } ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "openaiApiKey": { "type": "string" },
+                  "llmModel": { "type": "string" },
+                  "adminToken": { "type": "string" },
+                  "corsOrigin": { "type": "string" },
+                  "operatorToken": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Успех" }, "401": { "description": "Нет доступа" }, "403": { "description": "Нет доступа (только админ)" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/prompt": {
+      "get": {
+        "summary": "Получить текущий системный промт",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true } ],
+        "responses": { "200": { "description": "Успех" }, "401": { "description": "Нет доступа" } },
+        "security": [{ "AdminToken": [] }]
+      },
+      "put": {
+        "summary": "Применить и сохранить системный промт",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "prompt": { "type": "string" } }, "required": ["prompt"] } } }
+        },
+        "responses": { "200": { "description": "Успех" }, "401": { "description": "Нет доступа" }, "403": { "description": "Нет доступа (только админ)" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/prompt/apply": {
+      "post": {
+        "summary": "Применить системный промт без сохранения",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "prompt": { "type": "string" } }, "required": ["prompt"] } } } },
+        "responses": { "200": { "description": "Успех" }, "401": { "description": "Нет доступа" }, "403": { "description": "Нет доступа (только админ)" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/prompt/reset": {
+      "post": {
+        "summary": "Сбросить системный промт к дефолту",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true } ],
+        "responses": { "200": { "description": "Успех" }, "401": { "description": "Нет доступа" }, "403": { "description": "Нет доступа (только админ)" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/prompt/reload": {
+      "post": {
+        "summary": "Перечитать системный промт с диска",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true } ],
+        "responses": { "200": { "description": "Успех" }, "401": { "description": "Нет доступа" }, "403": { "description": "Нет доступа (только админ)" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/prompt/save": {
+      "post": {
+        "summary": "Сохранить текущий промт на диск",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true } ],
+        "responses": { "200": { "description": "Успех" }, "401": { "description": "Нет доступа" }, "403": { "description": "Нет доступа (только админ)" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/logs/clear": {
+      "post": {
+        "summary": "Очистить логи",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true } ],
+        "responses": { "200": { "description": "Успех" }, "401": { "description": "Нет доступа" }, "403": { "description": "Нет доступа (только админ)" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/logs/export": {
+      "get": {
+        "summary": "Экспорт логов (JSON/CSV)",
+        "parameters": [
+          { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true },
+          { "in": "query", "name": "format", "schema": { "type": "string", "enum": ["json", "csv"], "default": "json" }, "required": false }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/LogItem" } } },
+              "text/csv": { "schema": { "type": "string" } }
+            }
+          },
+          "401": { "description": "Нет доступа" }
+        },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/stats/daily": {
+      "get": {
+        "summary": "Статистика по дням",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true }, { "in": "query", "name": "days", "schema": { "type": "integer", "minimum": 1, "maximum": 30, "default": 7 }, "required": false } ],
+        "responses": { "200": { "description": "Успех", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminDailyStats" } } } }, "401": { "description": "Нет доступа" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/admin/audit": {
+      "get": {
+        "summary": "Аудит операций",
+        "parameters": [ { "in": "header", "name": "x-admin-token", "schema": { "type": "string" }, "required": true }, { "in": "query", "name": "limit", "schema": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 100 }, "required": false } ],
+        "responses": { "200": { "description": "Успех", "content": { "application/json": { "schema": { "type": "object", "properties": { "audit": { "type": "array", "items": { "$ref": "#/components/schemas/AuditItem" } } } } } } }, "401": { "description": "Нет доступа" }, "403": { "description": "Нет доступа (только админ)" } },
+        "security": [{ "AdminToken": [] }]
+      }
+    },
+    "/api/v1/qwen/photo2photo": {
+      "post": {
+        "summary": "Qwen: фото→фото",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "image": { "type": "string", "description": "base64 или dataURL" }, "promptText": { "type": "string" }, "mediaSize": { "type": "string", "description": "например '16:9'" } }, "required": ["image", "promptText"] },
+              "examples": { "basic": { "value": { "image": "data:image/png;base64,iVBORw0…", "promptText": "Make background softer", "mediaSize": "16:9" } } }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Успех", "content": { "application/json": { "schema": { "type": "object", "properties": { "media_url": { "type": "string" } } } } } }, "400": { "description": "Ошибка запроса" } }
+      }
+    },
+    "/api/v1/qwen/chat": {
+      "post": {
+        "summary": "Qwen: чат",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": { "role": { "type": "string" }, "content": { "type": "string" } },
+                      "required": ["role", "content"]
+                    }
+                  },
+                  "model": { "type": "string" }
+                },
+                "required": ["messages"]
+              },
+              "examples": { "basic": { "value": { "messages": [ { "role": "user", "content": "Hello" } ] } } }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Успех", "content": { "application/json": { "schema": { "type": "object", "properties": { "reply": { "type": "string" } } } } } },
+          "400": { "description": "Ошибка запроса" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Проверка здоровья сервиса",
+        "responses": { "200": { "description": "Успех", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Health" } } } } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Result": {
+        "type": "object",
+        "properties": {
+          "result": { "type": "string" }
+        }
+      },
+      "LogItem": {
+        "type": "object",
+        "properties": {
+          "ts": { "type": "string" },
+          "route": { "type": "string" },
+          "ip": { "type": "string" },
+          "ms": { "type": "integer" },
+          "output": { "type": "string" },
+          "error": { "type": "string" },
+          "input": { "type": "object" }
+        }
+      },
+      "AdminDailyStats": {
+        "type": "object",
+        "properties": {
+          "days": { "type": "integer" },
+          "rows": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "AuditItem": {
+        "type": "object",
+        "properties": {
+          "ts": { "type": "string" },
+          "ip": { "type": "string" },
+          "actor": { "type": "string" },
+          "action": { "type": "string" },
+          "details": { "type": "object" }
+        }
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "uptimeSec": { "type": "integer" },
+          "configured": { "type": "boolean" },
+          "model": { "type": "string" }
+        }
+      }
+    },
+    "securitySchemes": {
+      "AdminToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-admin-token"
+      }
+    }
+  }
+}

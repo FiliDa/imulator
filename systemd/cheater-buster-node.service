@@ -1,0 +1,18 @@
+[Unit]
+Description=Cheater Buster API (Node)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/cheater-buster
+Environment=APP_DIR=/opt/cheater-buster
+Environment=PORT=3000
+ExecStartPre=/bin/bash -c '/opt/cheater-buster/scripts/ensure-node.sh'
+ExecStartPre=/bin/bash -c '/opt/cheater-buster/scripts/ensure-env.sh'
+ExecStart=/usr/bin/node /opt/cheater-buster/src/server.js
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target
